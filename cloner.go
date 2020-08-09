@@ -102,7 +102,8 @@ func constructCSS(data string, largePaths []string, newPaths []string) []byte {
 		if filepath.Ext(content) == ".css" {
 			break
 		}
-		newData = strings.ReplaceAll(newData, content, newPaths[i])
+		_, fileString := path.Split(newPaths[i])
+		newData = strings.ReplaceAll(newData, content, fileString)
 	}
 
 	return []byte(newData)
