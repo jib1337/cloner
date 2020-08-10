@@ -22,14 +22,10 @@ func sendRequest(url string, index bool) ([]byte, error) {
 	resp, err := http.Get(url)
 
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Printf("Error encountered whilst retrieving %s:\n\t%s\n", url, err.Error())
+		return []byte("0"), err
 	}
 	defer resp.Body.Close()
-
-	if err != nil {
-		// Print an error for an item if it cannot be retrieved.
-		fmt.Printf("Error encountered whilst retrieving %s:\n\t%s\n", url, err)
-	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	return body, err
@@ -233,7 +229,7 @@ func constructor(data string, outFolder string, largePaths []string, shortPaths 
 	}
 
 	writeFile([]byte(newData), outFolder+string(os.PathSeparator)+"index.html")
-	println("Done!")
+	println("Site cloned to ", outFolder)
 }
 
 func printBanner() {
