@@ -16,7 +16,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-func sendRequest(url string, index bool) ([]byte, error) {
+func sendRequest(url string) ([]byte, error) {
 	// Request a resource and return it to the constructor
 
 	resp, err := http.Get(url)
@@ -62,7 +62,7 @@ func getContent(url string, outFolder string, largePaths []string) ([]string, []
 		}
 
 		fmt.Print("Getting content: ", link)
-		data, reqErr := sendRequest(url+"/"+link, false)
+		data, reqErr := sendRequest(url + "/" + link)
 
 		if reqErr != nil {
 			fmt.Print(" - " + reqErr.Error())
@@ -266,7 +266,7 @@ func main() {
 
 	printBanner()
 	fmt.Println("Cloning page:", url)
-	data, reqErr := sendRequest(url, false)
+	data, reqErr := sendRequest(url)
 
 	if reqErr != nil {
 		fmt.Println(reqErr.Error())
