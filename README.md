@@ -17,3 +17,7 @@
   -u string
         The URL of the site to clone
 ```
+
+## Todo
+- Add support for embedded stylesheets
+- Refactor how the parser works
