@@ -22,7 +22,6 @@ func sendRequest(url string, index bool) ([]byte, error) {
 	resp, err := http.Get(url)
 
 	if err != nil {
-		fmt.Printf("Error encountered whilst retrieving %s:\n\t%s\n", url, err.Error())
 		return []byte("0"), err
 	}
 	defer resp.Body.Close()
