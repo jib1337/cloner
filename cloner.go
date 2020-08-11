@@ -59,8 +59,8 @@ func getContent(URL string, outFolder string, largePaths []string) ([]string, []
 
 		oldLink = link
 
-		if strings.HasPrefix(link, "/") {
-			// Resource is at root path
+		for strings.HasPrefix(link, "/") || strings.HasPrefix(link, "../") {
+			// Resource is likely at root path
 
 			link = string([]rune(link)[1:])
 			u, err := url.Parse(URL)
@@ -203,11 +203,7 @@ func parser(URL string) ([]string, []string) {
 				for _, attr := range token.Attr {
 					if attr.Key == "action" {
 						formLinks = append(formLinks, attr.Val)
-					} else if attr.Key == "style" {
-						stylePaths = parseCSS(URL, attr.Val, true)
-						for _, path := range stylePaths {
-							links = append(links, path)
-						}
+						break
 					}
 				}
 			}
@@ -216,11 +212,7 @@ func parser(URL string) ([]string, []string) {
 				for _, attr := range token.Attr {
 					if attr.Key == "src" && !(strings.HasPrefix(attr.Val, "http://") || strings.HasPrefix(attr.Val, "https://")) {
 						links = append(links, attr.Val)
-					} else if attr.Key == "style" {
-						stylePaths = parseCSS(URL, attr.Val, true)
-						for _, path := range stylePaths {
-							links = append(links, path)
-						}
+						break
 					}
 				}
 			}
@@ -229,11 +221,7 @@ func parser(URL string) ([]string, []string) {
 				for _, attr := range token.Attr {
 					if attr.Key == "src" && !(strings.HasPrefix(attr.Val, "http://") || strings.HasPrefix(attr.Val, "https://")) {
 						links = append(links, attr.Val)
-					} else if attr.Key == "style" {
-						stylePaths = parseCSS(URL, attr.Val, true)
-						for _, path := range stylePaths {
-							links = append(links, path)
-						}
+						break
 					}
 				}
 			}
@@ -243,11 +231,11 @@ func parser(URL string) ([]string, []string) {
 					if attr.Key == "href" && !(strings.HasPrefix(attr.Val, "http://") || strings.HasPrefix(attr.Val, "https://")) {
 						if filepath.Ext(attr.Val) == ".css" {
 							cssLinks = append(cssLinks, attr.Val)
-							continue
+
 						} else {
 							links = append(links, attr.Val)
-							continue
 						}
+						break
 					}
 				}
 			}
@@ -261,7 +249,7 @@ func parser(URL string) ([]string, []string) {
 			}
 
 			for _, attr := range token.Attr {
-				// Catch-all for embedded styles
+				// Catch-all for embedded styles in any tag
 
 				if attr.Key == "style" {
 					stylePaths = parseCSS(URL, attr.Val, true)
@@ -308,9 +296,11 @@ func main() {
 	var formURL string
 	var URL string
 	var outFolder string
+	//var debug bool
 	flag.StringVar(&URL, "u", "", "The URL of the site to clone")
 	flag.StringVar(&formURL, "f", "", "The URL of the site to replace in form actions")
 	flag.StringVar(&outFolder, "o", "."+string(os.PathSeparator), "Output location")
+	//flag.BoolVar(&debug, "d", false, "Write log file for debugging")
 	flag.Parse()
 
 	if URL == "" {
