@@ -59,8 +59,6 @@ func getContent(URL string, outFolder string, largePaths []string) ([]string, []
 
 		oldLink = link
 
-		fmt.Print("Getting content:")
-
 		if strings.HasPrefix(link, "/") {
 			// Resource is at root path
 
@@ -75,11 +73,11 @@ func getContent(URL string, outFolder string, largePaths []string) ([]string, []
 			URL = u.Scheme + "://" + u.Host
 		}
 
-		fmt.Print(" " + URL + "/" + link)
-
-		if strings.HasPrefix(link, ".") {
-			link = string([]rune(link)[1:])
+		if strings.HasPrefix(link, "./") {
+			link = string([]rune(link)[2:])
 		}
+
+		fmt.Print("Getting content: ", URL+"/"+link)
 
 		data, reqErr := sendRequest(URL + "/" + link)
 
@@ -92,8 +90,9 @@ func getContent(URL string, outFolder string, largePaths []string) ([]string, []
 			_, fileString := path.Split(link)
 			newName := "content" + strconv.Itoa(i) + filepath.Ext(fileString)
 
-			// Modify file to contain new CSS elements if required
 			if filepath.Ext(fileString) == ".css" {
+				// Modify file to contain new CSS elements if required
+
 				data = constructCSS(string(data), largePaths, newPaths)
 			}
 
@@ -145,7 +144,9 @@ func parseCSS(URL string, stylesheet string, embedded bool) []string {
 
 		defer data.Body.Close()
 		l = css.NewLexer(data.Body)
+
 	} else {
+
 		l = css.NewLexer(bytes.NewBufferString(stylesheet))
 	}
 
@@ -202,7 +203,11 @@ func parser(URL string) ([]string, []string) {
 				for _, attr := range token.Attr {
 					if attr.Key == "action" {
 						formLinks = append(formLinks, attr.Val)
-						continue
+					} else if attr.Key == "style" {
+						stylePaths = parseCSS(URL, attr.Val, true)
+						for _, path := range stylePaths {
+							links = append(links, path)
+						}
 					}
 				}
 			}
@@ -211,7 +216,11 @@ func parser(URL string) ([]string, []string) {
 				for _, attr := range token.Attr {
 					if attr.Key == "src" && !(strings.HasPrefix(attr.Val, "http://") || strings.HasPrefix(attr.Val, "https://")) {
 						links = append(links, attr.Val)
-						continue
+					} else if attr.Key == "style" {
+						stylePaths = parseCSS(URL, attr.Val, true)
+						for _, path := range stylePaths {
+							links = append(links, path)
+						}
 					}
 				}
 			}
@@ -220,7 +229,11 @@ func parser(URL string) ([]string, []string) {
 				for _, attr := range token.Attr {
 					if attr.Key == "src" && !(strings.HasPrefix(attr.Val, "http://") || strings.HasPrefix(attr.Val, "https://")) {
 						links = append(links, attr.Val)
-						continue
+					} else if attr.Key == "style" {
+						stylePaths = parseCSS(URL, attr.Val, true)
+						for _, path := range stylePaths {
+							links = append(links, path)
+						}
 					}
 				}
 			}
@@ -244,6 +257,17 @@ func parser(URL string) ([]string, []string) {
 				embeddedStyles := parseCSS(URL, string(z.Text()), true)
 				for _, link := range embeddedStyles {
 					links = append(links, link)
+				}
+			}
+
+			for _, attr := range token.Attr {
+				// Catch-all for embedded styles
+
+				if attr.Key == "style" {
+					stylePaths = parseCSS(URL, attr.Val, true)
+					for _, path := range stylePaths {
+						links = append(links, path)
+					}
 				}
 			}
 		}
@@ -315,7 +339,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Set up content directories
 	err := os.Mkdir(outFolder, 0755)
 	check(err)
 	err2 := os.Mkdir(outFolder+string(os.PathSeparator)+"content", 0755)

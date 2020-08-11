@@ -19,6 +19,5 @@
 ```
 
 ## Todo
-- Reduce the number of requests needed (should always be 1 per file)
-- Refactor how the parser works
+- Refactor when I get good at this language
 - Figure out a less bad way to replace links
