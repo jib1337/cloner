@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -16,10 +18,10 @@ import (
 	"golang.org/x/net/html"
 )
 
-func sendRequest(url string) ([]byte, error) {
+func sendRequest(URL string) ([]byte, error) {
 	// Request a resource and return it to the constructor
 
-	resp, err := http.Get(url)
+	resp, err := http.Get(URL)
 
 	if err != nil {
 		return []byte("0"), err
@@ -46,7 +48,7 @@ func writeFile(data []byte, fileName string) {
 	check(err)
 }
 
-func getContent(url string, outFolder string, largePaths []string) ([]string, []string) {
+func getContent(URL string, outFolder string, largePaths []string) ([]string, []string) {
 	// Retrieve local site content for use in clone
 
 	var newPaths []string
@@ -57,12 +59,29 @@ func getContent(url string, outFolder string, largePaths []string) ([]string, []
 
 		oldLink = link
 
+		fmt.Print("Getting content:")
+
 		if strings.HasPrefix(link, "/") {
+			// Resource is at root path
+
+			link = string([]rune(link)[1:])
+			u, err := url.Parse(URL)
+
+			if err != nil {
+				fmt.Print(" -", err.Error())
+				continue
+			}
+
+			URL = u.Scheme + "://" + u.Host
+		}
+
+		fmt.Print(" " + URL + "/" + link)
+
+		if strings.HasPrefix(link, ".") {
 			link = string([]rune(link)[1:])
 		}
 
-		fmt.Print("Getting content: ", link)
-		data, reqErr := sendRequest(url + "/" + link)
+		data, reqErr := sendRequest(URL + "/" + link)
 
 		if reqErr != nil {
 			fmt.Print(" - " + reqErr.Error())
@@ -104,22 +123,32 @@ func constructCSS(data string, largePaths []string, newPaths []string) []byte {
 	return []byte(newData)
 }
 
-func parseCSS(url string, stylesheet string) []string {
+func parseCSS(URL string, stylesheet string, embedded bool) []string {
 	// Get links out of stylesheets for processing
 
 	var stylePaths []string
+	var l *css.Lexer
 
-	if strings.HasPrefix(stylesheet, "/") {
-		stylesheet = string([]rune(stylesheet)[1:])
+	if embedded == false {
+		// Recieved a list of css file paths
+
+		if strings.HasPrefix(stylesheet, ".") {
+			stylesheet = string([]rune(stylesheet)[1:])
+		}
+
+		data, err := http.Get(URL + "/" + stylesheet)
+		if err != nil {
+			fmt.Println(err.Error())
+			data.Body.Close()
+			return stylePaths
+		}
+
+		defer data.Body.Close()
+		l = css.NewLexer(data.Body)
+	} else {
+		l = css.NewLexer(bytes.NewBufferString(stylesheet))
 	}
 
-	data, err := http.Get(url + "/" + stylesheet)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	defer data.Body.Close()
-
-	l := css.NewLexer(data.Body)
 	for {
 		tt, text := l.Next()
 		switch tt {
@@ -131,13 +160,12 @@ func parseCSS(url string, stylesheet string) []string {
 			stylePaths = append(stylePaths, stylePath)
 		}
 	}
-
 }
 
-func parser(url string) ([]string, []string) {
+func parser(URL string) ([]string, []string) {
 	// Create an array of referenced objects from the page
 
-	data, err := http.Get(url)
+	data, err := http.Get(URL)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
@@ -157,7 +185,7 @@ func parser(url string) ([]string, []string) {
 		case html.ErrorToken:
 
 			for _, l := range cssLinks {
-				stylePaths = parseCSS(url, l)
+				stylePaths = parseCSS(URL, l, false)
 				for _, path := range stylePaths {
 					links = append(links, path)
 				}
@@ -174,6 +202,7 @@ func parser(url string) ([]string, []string) {
 				for _, attr := range token.Attr {
 					if attr.Key == "action" {
 						formLinks = append(formLinks, attr.Val)
+						continue
 					}
 				}
 			}
@@ -182,6 +211,7 @@ func parser(url string) ([]string, []string) {
 				for _, attr := range token.Attr {
 					if attr.Key == "src" && !(strings.HasPrefix(attr.Val, "http://") || strings.HasPrefix(attr.Val, "https://")) {
 						links = append(links, attr.Val)
+						continue
 					}
 				}
 			}
@@ -190,6 +220,7 @@ func parser(url string) ([]string, []string) {
 				for _, attr := range token.Attr {
 					if attr.Key == "src" && !(strings.HasPrefix(attr.Val, "http://") || strings.HasPrefix(attr.Val, "https://")) {
 						links = append(links, attr.Val)
+						continue
 					}
 				}
 			}
@@ -199,10 +230,20 @@ func parser(url string) ([]string, []string) {
 					if attr.Key == "href" && !(strings.HasPrefix(attr.Val, "http://") || strings.HasPrefix(attr.Val, "https://")) {
 						if filepath.Ext(attr.Val) == ".css" {
 							cssLinks = append(cssLinks, attr.Val)
+							continue
 						} else {
 							links = append(links, attr.Val)
+							continue
 						}
 					}
+				}
+			}
+
+			if "style" == token.Data {
+				z.Next()
+				embeddedStyles := parseCSS(URL, string(z.Text()), true)
+				for _, link := range embeddedStyles {
+					links = append(links, link)
 				}
 			}
 		}
@@ -222,13 +263,14 @@ func constructor(data string, outFolder string, largePaths []string, shortPaths 
 		fmt.Println("Performing form action substitution with: " + formURL)
 		for _, link := range formLinks {
 			newData = strings.Replace(newData, "action=\""+link+"\"", "action=\""+formURL+"\"", -1)
+			newData = strings.Replace(newData, "action="+link, "action=\""+formURL+"\"", -1)
 		}
 	} else {
 		fmt.Println("Skipping form action substitution")
 	}
 
 	writeFile([]byte(newData), outFolder+string(os.PathSeparator)+"index.html")
-	println("Site cloned to ", outFolder)
+	println("Site cloned to", outFolder)
 }
 
 func printBanner() {
@@ -240,14 +282,14 @@ func printBanner() {
 func main() {
 
 	var formURL string
-	var url string
+	var URL string
 	var outFolder string
-	flag.StringVar(&url, "u", "", "The URL of the site to clone")
+	flag.StringVar(&URL, "u", "", "The URL of the site to clone")
 	flag.StringVar(&formURL, "f", "", "The URL of the site to replace in form actions")
 	flag.StringVar(&outFolder, "o", "."+string(os.PathSeparator), "Output location")
 	flag.Parse()
 
-	if url == "" {
+	if URL == "" {
 		printBanner()
 		flag.PrintDefaults()
 		os.Exit(1)
@@ -260,13 +302,13 @@ func main() {
 	currentTime := time.Now()
 	outFolder = outFolder + "cloned-" + currentTime.Format("2006-01-02-15-04-05")
 
-	if strings.HasSuffix(url, "/") {
-		url = url[:len(url)-1]
+	if strings.HasSuffix(URL, "/") {
+		URL = URL[:len(URL)-1]
 	}
 
 	printBanner()
-	fmt.Println("Cloning page:", url)
-	data, reqErr := sendRequest(url)
+	fmt.Println("Cloning page:", URL)
+	data, reqErr := sendRequest(URL)
 
 	if reqErr != nil {
 		fmt.Println(reqErr.Error())
@@ -279,8 +321,8 @@ func main() {
 	err2 := os.Mkdir(outFolder+string(os.PathSeparator)+"content", 0755)
 	check(err2)
 
-	contentList, formLinks := parser(url)
+	contentList, formLinks := parser(URL)
 
-	shortPaths, largePaths := getContent(url, outFolder, contentList)
+	shortPaths, largePaths := getContent(URL, outFolder, contentList)
 	constructor(string(data), outFolder, largePaths, shortPaths, formLinks, formURL)
 }
