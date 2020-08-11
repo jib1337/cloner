@@ -10,12 +10,13 @@
 ============================================================
                            cloner
 ============================================================
+  -d	Write log file for debugging
   -f string
-        The URL of the site to replace in form actions
+    	The URL of the site to replace in form actions
   -o string
-        Output location (default ".\\")
+    	Output location (default ".\\")
   -u string
-        The URL of the site to clone
+    	The URL of the site to clone
 ```
 
 ## Todo
