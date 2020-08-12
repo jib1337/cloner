@@ -10,7 +10,6 @@
 ============================================================
                            cloner
 ============================================================
-  -d	Write log file for debugging
   -f string
     	The URL of the site to replace in form actions
   -o string
@@ -21,4 +20,5 @@
 
 ## Todo
 - Refactor when I get good at this language
+- UTF-8 fixes
 - Figure out a less bad way to replace links

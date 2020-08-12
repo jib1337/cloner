@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -36,7 +34,7 @@ func sendRequest(URL string) ([]byte, error) {
 
 func checkError(err error, fileName string) {
 	if err != nil {
-		log.Printf("Error writing %s: %s\n", fileName, err.Error())
+		fmt.Printf("Error writing %s: %s\n", fileName, err.Error())
 		os.Exit(1)
 	}
 }
@@ -77,13 +75,14 @@ func getContent(URL string, outFolder string, largePaths []string) ([]string, []
 			link = string([]rune(link)[2:])
 		}
 
-		log.Print("Getting content: ", URL+"/"+link)
+		fmt.Print("Getting content: ", URL+"/"+link)
 
 		data, reqErr := sendRequest(URL + "/" + link)
 
 		if reqErr != nil {
-			log.Print(" - " + reqErr.Error())
+			fmt.Print(" - " + reqErr.Error() + "\n")
 		} else {
+			fmt.Print(" - Success\n")
 			newLargePaths = append(newLargePaths, oldLink)
 
 			_, fileString := path.Split(link)
@@ -107,7 +106,7 @@ func getContent(URL string, outFolder string, largePaths []string) ([]string, []
 func constructCSS(data string, largePaths []string, newPaths []string) []byte {
 	// Update stylesheet
 
-	log.Println("Constructing CSS...")
+	fmt.Println("Constructing CSS...")
 	newData := data
 
 	for i, content := range largePaths {
@@ -263,7 +262,7 @@ func parser(URL string) ([]string, []string) {
 
 func constructor(data string, outFolder string, largePaths []string, shortPaths []string, formLinks []string, formURL string) {
 	// Creates main page document
-	log.Println("Building page...")
+	fmt.Println("Building page...")
 	newData := data
 
 	for i, content := range largePaths {
@@ -271,23 +270,23 @@ func constructor(data string, outFolder string, largePaths []string, shortPaths 
 	}
 
 	if len(formLinks) > 0 && formURL != "" {
-		log.Println("Performing form action substitution with: " + formURL)
+		fmt.Println("Performing form action substitution with: " + formURL)
 		for _, link := range formLinks {
 			newData = strings.Replace(newData, "action=\""+link+"\"", "action=\""+formURL+"\"", -1)
 			newData = strings.Replace(newData, "action="+link, "action=\""+formURL+"\"", -1)
 		}
 	} else {
-		log.Println("Skipping form action substitution")
+		fmt.Println("Skipping form action substitution")
 	}
 
 	writeFile([]byte(newData), outFolder+string(os.PathSeparator)+"index.html")
-	log.Println("Site cloned to", outFolder)
+	fmt.Println("Site cloned to", outFolder)
 }
 
 func printBanner() {
-	log.Println("============================================================")
-	log.Println("                           cloner")
-	log.Println("============================================================")
+	fmt.Println("============================================================")
+	fmt.Println("                           cloner")
+	fmt.Println("============================================================")
 }
 
 func main() {
@@ -295,19 +294,12 @@ func main() {
 	var formURL string
 	var URL string
 	var outFolder string
-	var debug bool
 	var err error
-	var output io.Writer
 
 	flag.StringVar(&URL, "u", "", "The URL of the site to clone")
 	flag.StringVar(&formURL, "f", "", "The URL of the site to replace in form actions")
 	flag.StringVar(&outFolder, "o", "."+string(os.PathSeparator), "Output location")
-	flag.BoolVar(&debug, "d", false, "Write log file for debugging")
 	flag.Parse()
-
-	output = io.Writer(os.Stdout)
-	log.SetFlags(0)
-	log.SetOutput(output)
 
 	if URL == "" {
 		printBanner()
@@ -329,19 +321,13 @@ func main() {
 	err = os.Mkdir(outFolder, 0755)
 	checkError(err, outFolder)
 
-	if debug {
-		file, err := os.OpenFile(outFolder+string(os.PathSeparator)+"log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
-		checkError(err, outFolder+string(os.PathSeparator)+"log.txt")
-		output = io.MultiWriter(file, os.Stdout)
-	}
-
 	printBanner()
-	log.Println("Cloning page:", URL)
+	fmt.Println("Cloning page:", URL)
 
 	data, reqErr := sendRequest(URL)
 
 	if reqErr != nil {
-		log.Println(reqErr.Error())
+		fmt.Println(reqErr.Error())
 		os.Exit(1)
 	}
 
