@@ -20,7 +20,12 @@ import (
 func sendRequest(URL string) ([]byte, error) {
 	// Request a resource and return it to the constructor
 
-	resp, err := http.Get(URL)
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	resp, err := client.Get(URL)
 
 	if err != nil {
 		return []byte("0"), err
