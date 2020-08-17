@@ -265,6 +265,27 @@ func parser(URL string) ([]string, []string) {
 	}
 }
 
+func clean(URL string) string {
+	// Clean up the main URL a bit
+
+	u, err := url.Parse(URL)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return URL
+	}
+
+	urlSplit := strings.Split(u.Path, "/")
+	urlSuffix := urlSplit[len(urlSplit)-1]
+
+	if path.Ext(urlSuffix) != "" {
+		// If the final part of the URL has an extension, get rid of it (we can't request content links using it)
+		URL = u.Scheme + "://" + u.Host + "/" + strings.Join(urlSplit[:len(urlSplit)-1], "/")
+	}
+
+	return URL
+}
+
 func constructor(data string, outFolder string, largePaths []string, shortPaths []string, formLinks []string, formURL string) {
 	// Creates main page document
 	fmt.Println("Building page...")
@@ -278,6 +299,7 @@ func constructor(data string, outFolder string, largePaths []string, shortPaths 
 		fmt.Println("Performing form action substitution with: " + formURL)
 		for _, link := range formLinks {
 			newData = strings.Replace(newData, "action=\""+link+"\"", "action=\""+formURL+"\"", -1)
+			newData = strings.Replace(newData, "action=\"", "action=\""+formURL+"\"", -1)
 			newData = strings.Replace(newData, "action="+link, "action=\""+formURL+"\"", -1)
 		}
 	} else {
@@ -335,6 +357,8 @@ func main() {
 		fmt.Println(reqErr.Error())
 		os.Exit(1)
 	}
+
+	URL = clean(URL)
 
 	err = os.Mkdir(outFolder+string(os.PathSeparator)+"content", 0755)
 	checkError(err, outFolder+string(os.PathSeparator)+"content")
