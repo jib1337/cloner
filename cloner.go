@@ -280,7 +280,7 @@ func clean(URL string) string {
 
 	if path.Ext(urlSuffix) != "" {
 		// If the final part of the URL has an extension, get rid of it (we can't request content links using it)
-		URL = u.Scheme + "://" + u.Host + "/" + strings.Join(urlSplit[:len(urlSplit)-1], "/")
+		URL = u.Scheme + "://" + u.Host + strings.Join(urlSplit[:len(urlSplit)-1], "/")
 	}
 
 	return URL
