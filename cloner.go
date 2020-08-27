@@ -18,24 +18,28 @@ import (
 )
 
 func sendRequest(URL string) ([]byte, error) {
-	// Request a resource and return it to the constructor
+	// Request a resource, handle errors and return it to the constructor
 
 	resp, err := http.Get(URL)
 
-	// if err ==
-	// client := &http.Client{
-	// 	CheckRedirect: func(req *http.Request, via []*http.Request) error {
-	// 		return http.ErrUseLastResponse
-	// 	},
-	// }
-	// resp, err := client.Get(URL)
+	if resp.StatusCode <= 300 && resp.StatusCode > 400 {
+		// If the request returns a 300 status, try not following redirects
+
+		client := &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
+		resp, err = client.Get(URL)
+	}
 
 	if err != nil {
 		return []byte("0"), err
 	}
-	defer resp.Body.Close()
 
+	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
+
 	return body, err
 
 }
