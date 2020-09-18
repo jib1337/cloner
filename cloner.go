@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -13,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tdewolff/parse"
 	"github.com/tdewolff/parse/css"
 	"golang.org/x/net/html"
 )
@@ -153,11 +153,17 @@ func parseCSS(URL string, stylesheet string, embedded bool) []string {
 		}
 
 		defer data.Body.Close()
-		l = css.NewLexer(data.Body)
+		bodyBytes, err := ioutil.ReadAll(data.Body)
+		if err != nil {
+			fmt.Println(err.Error())
+			return stylePaths
+		}
+
+		l = css.NewLexer(parse.NewInputString(string(bodyBytes)))
 
 	} else {
 
-		l = css.NewLexer(bytes.NewBufferString(stylesheet))
+		l = css.NewLexer(parse.NewInputString(stylesheet))
 	}
 
 	for {
