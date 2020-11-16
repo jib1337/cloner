@@ -1,4 +1,4 @@
-# cloner | Jack Nelson
+# cloner
 
 ## Features
 - Clone a webpage for whatever purpose you wish
