@@ -44,18 +44,24 @@ func sendRequest(URL string) ([]byte, error) {
 
 }
 
-func checkError(err error, fileName string) {
+func checkError(err error, fileName string) bool {
 	if err != nil {
 		fmt.Printf("Error writing %s: %s\n", fileName, err.Error())
-		os.Exit(1)
+		return false
 	}
+
+	return true
 }
 
-func writeFile(data []byte, fileName string) {
+func writeFile(data []byte, fileName string) bool {
 	// Writes a web object file to disk
 
 	err := ioutil.WriteFile(fileName, data, 0644)
-	checkError(err, fileName)
+	if checkError(err, fileName) == true {
+		return true
+	}
+
+	return false
 }
 
 func getContent(URL string, outFolder string, largePaths []string) ([]string, []string) {
@@ -87,9 +93,13 @@ func getContent(URL string, outFolder string, largePaths []string) ([]string, []
 			link = string([]rune(link)[2:])
 		}
 
-		fmt.Print("Getting content: ", URL+"/"+link)
+		fmt.Print("Getting content: ", link)
 
-		data, reqErr := sendRequest(URL + "/" + link)
+		if !strings.HasPrefix(link, URL) {
+			link = URL + "/" + link
+		}
+
+		data, reqErr := sendRequest(link)
 
 		if reqErr != nil {
 			fmt.Print(" - " + reqErr.Error() + "\n")
@@ -368,7 +378,9 @@ func main() {
 	}
 
 	err = os.Mkdir(outFolder, 0755)
-	checkError(err, outFolder)
+	if checkError(err, outFolder) == false {
+		os.Exit(1)
+	}
 
 	fmt.Println("Cloning page:", URL)
 
@@ -382,7 +394,9 @@ func main() {
 	URL = clean(URL)
 
 	err = os.Mkdir(outFolder+string(os.PathSeparator)+"content", 0755)
-	checkError(err, outFolder+string(os.PathSeparator)+"content")
+	if checkError(err, outFolder+string(os.PathSeparator)+"content") == false {
+		os.Exit(1)
+	}
 
 	contentList, formLinks := parser(URL)
 
