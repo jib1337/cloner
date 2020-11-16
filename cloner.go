@@ -354,14 +354,22 @@ func main() {
 	currentTime := time.Now()
 	outFolder = outFolder + "cloned-" + currentTime.Format("2006-01-02-15-04-05")
 
+	printBanner()
+
 	if strings.HasSuffix(URL, "/") {
+		// Get rid of any single instance of a forward slash on the end (allows "escaping")
 		URL = URL[:len(URL)-1]
+	}
+
+	if !strings.HasPrefix(URL, "http://") && !strings.HasPrefix(URL, "https://") {
+		// Error out if no http/s prefix
+		fmt.Println("Error: Please specify complete URL with http/https prefix")
+		os.Exit(1)
 	}
 
 	err = os.Mkdir(outFolder, 0755)
 	checkError(err, outFolder)
 
-	printBanner()
 	fmt.Println("Cloning page:", URL)
 
 	data, reqErr := sendRequest(URL)
